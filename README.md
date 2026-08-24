@@ -1,3 +1,37 @@
+# 🛡️ SE4030 Secure Software Development - Secured Version
+
+This repository contains the security-enhanced version of the Avyra Game Download Platform, developed as part of the SE4030 Secure Software Development module assignment.
+
+### 👥 Team Members
+- [Member 1 Name] - [Index Number]
+- [Member 2 Name] - [Index Number]
+- [Member 3 Name] - [Index Number]
+- [Member 4 Name] - [Index Number]
+
+### 🔗 Project Links
+- **Original Project:** https://github.com/3hal0n/Avyra
+- **Modified Project:** https://github.com/migarasliit/Avyra-Secured-SE4030
+- **YouTube Demonstration:** [Insert YouTube Link Here - Max 20 mins]
+
+### 🛡️ Security Improvements (7+ Distinct Vulnerabilities Fixed)
+1. **Insecure Direct Object Reference (IDOR)** - Fixed in Review deletion endpoint.
+2. **Mass Assignment** - Fixed in Review creation endpoint.
+3. **Stored Cross-Site Scripting (XSS)** - Fixed using OWASP Java Encoder.
+4. **Path Traversal** - Fixed in file download endpoint.
+5. **Cryptographic Failures** - Removed hardcoded secrets, migrated to environment variables.
+6. **Using Components with Known Vulnerabilities** - Updated dependencies via OWASP Dependency-Check.
+7. **Session Hijacking** - Migrated JWT storage from localStorage to HttpOnly Secure cookies.
+8. **Security Misconfiguration** - Fixed overly permissive CORS settings and verbose error messages.
+
+### 🔑 Additional Feature
+- **OAuth/OpenID Connect Integration** - Added "Login with Google" functionality using Authorization Code Grant Type.
+
+---
+*(Original Project Documentation Below)*
+
+
+
+
 # Avyra Game Download Platform
 ![React](https://img.shields.io/badge/Frontend-React-blue?logo=react)
 ![Spring Boot](https://img.shields.io/badge/Backend-SpringBoot-green?logo=springboot)
