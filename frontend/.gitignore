@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+frontend/node_modules/
+backend/node_modules/
+
+# Build outputs
+target/
+backend/target/
+frontend/dist/
+frontend/build/
+
+# Testing and Tools
+backend/.allure/
+allure-results/
+
+# Game Downloads & Large Media Files
+frontend/public/downloads/
+*.zip
+*.rar
+*.7z
+*.exe
+*.iso
+*.mp4
+*.mov
+*.mkv
+*.glb
+
+# Environment & Secrets
+.env
+.env.local
+.env.production
+/backend/src/main/resources/application.properties
+
+# IDE & OS
+.vscode/
+.idea/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
