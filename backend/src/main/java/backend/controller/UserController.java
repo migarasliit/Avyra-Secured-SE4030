@@ -78,6 +78,15 @@ public class UserController {
         return ResponseEntity.ok(user);
     }
 
+    // CSRF Token Endpoint to initialize/retrieve CSRF token for SPA
+    @GetMapping("/csrf")
+    public ResponseEntity<?> getCsrfToken(org.springframework.security.web.csrf.CsrfToken token) {
+        return ResponseEntity.ok(Map.of(
+                "token", token != null ? token.getToken() : "",
+                "headerName", token != null ? token.getHeaderName() : "X-XSRF-TOKEN"
+        ));
+    }
+
     @ControllerAdvice
     public class GlobalExceptionHandler {
 
