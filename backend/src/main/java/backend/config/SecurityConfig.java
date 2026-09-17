@@ -1,12 +1,15 @@
 package backend.config;
 
 import backend.security.JwtUtil;
+import backend.security.OAuth2AuthenticationSuccessHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
@@ -21,9 +24,19 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtUtil jwtUtil;
+    private final OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler;
 
-    public SecurityConfig(JwtUtil jwtUtil) {
+    public SecurityConfig(
+            JwtUtil jwtUtil,
+            OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler
+    ) {
         this.jwtUtil = jwtUtil;
+        this.oAuth2AuthenticationSuccessHandler = oAuth2AuthenticationSuccessHandler;
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
     }
 
     @Bean
@@ -41,7 +54,7 @@ public class SecurityConfig {
                 // 3. Security Headers: CSP, nosniff, HSTS, frameOptions deny
                 .headers(headers -> headers
                         .contentSecurityPolicy(csp -> csp
-                                .policyDirectives("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' http://localhost:5173 http://localhost:8080 ws://localhost:5173; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self';")
+                                .policyDirectives("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' http://localhost:5173 http://localhost:8080 ws://localhost:5173; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self' https://accounts.google.com;")
                         )
                         .contentTypeOptions(Customizer.withDefaults()) // X-Content-Type-Options: nosniff
                         .httpStrictTransportSecurity(hsts -> hsts
@@ -55,6 +68,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/api/auth/**",
+                                "/oauth2/**",
+                                "/login/oauth2/**",
                                 "/api/games/**",
                                 "/api/cart/**",
                                 "/api/orders/**",
@@ -69,13 +84,18 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
 
-                // 5. JWT Authentication Filter
+                // 5. OAuth 2.0 Login Configuration with Custom Success Handler
+                .oauth2Login(oauth2 -> oauth2
+                        .successHandler(oAuth2AuthenticationSuccessHandler)
+                )
+
+                // 6. JWT Authentication Filter
                 .addFilterBefore(
                         new JwtAuthenticationFilter(jwtUtil),
                         UsernamePasswordAuthenticationFilter.class
                 )
 
-                // 6. CSRF Cookie Filter to ensure deferred XSRF-TOKEN cookie is rendered for SPAs
+                // 7. CSRF Cookie Filter to ensure deferred XSRF-TOKEN cookie is rendered for SPAs
                 .addFilterAfter(
                         new CsrfCookieFilter(),
                         BasicAuthenticationFilter.class
