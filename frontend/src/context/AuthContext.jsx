@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import api from "../services/api";
 
 const AuthContext = createContext();
 
@@ -12,52 +12,58 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Check if logged in by presence of token and fetch user info
-  const checkAuth = async () => {
-    const token = localStorage.getItem("jwtToken");
-    if (!token) {
-      setUser(null);
-      setLoading(false);
-      return;
-    }
-
+  // Check if logged in by calling /api/auth/me (browser automatically sends HttpOnly cookie)
+  const checkAuth = useCallback(async () => {
     try {
-      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-      const res = await axios.get("http://localhost:8080/api/auth/me");
+      const res = await api.get("/api/auth/me");
       setUser(res.data);
     } catch (err) {
-      // Token invalid or expired
-      localStorage.removeItem("jwtToken");
+      // Cookie is missing, expired, or invalid
       setUser(null);
     } finally {
       setLoading(false);
     }
-  };
-
-  // Run on mount: init user state
-  useEffect(() => {
-    checkAuth();
   }, []);
 
-  // Login handler (store token, fetch user)
-  const login = async (token) => {
-    localStorage.setItem("jwtToken", token);
-    axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+  // Run on mount: verify session
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
+
+  // Login handler: Authenticate, backend sets HttpOnly cookie, verify user
+  const login = async (credentials) => {
+    if (credentials) {
+      await api.post("/api/auth/login", credentials);
+    }
     await checkAuth();
     navigate("/");
   };
 
-  // Logout handler (clear token and user)
-  const logout = () => {
-    localStorage.removeItem("jwtToken");
-    delete axios.defaults.headers.common["Authorization"];
-    setUser(null);
-    navigate("/login");
+  // Logout handler: Ask backend to expire HttpOnly cookie and clear state
+  const logout = async () => {
+    try {
+      await api.post("/api/auth/logout");
+    } catch (err) {
+      console.error("Logout request failed:", err);
+    } finally {
+      setUser(null);
+      navigate("/login");
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, isAuthenticated: !!user }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        login,
+        logout,
+        isAuthenticated: !!user,
+        checkAuth,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
 };
+

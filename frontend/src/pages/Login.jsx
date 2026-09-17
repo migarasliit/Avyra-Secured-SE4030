@@ -1,14 +1,15 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import axios from 'axios'
 import NavBar from '../components/Navbar'
 import Footer from '../components/Footer'
+import { useAuth } from '../context/AuthContext'
 
 import { Canvas } from '@react-three/fiber'
 import { LoginCharacter } from '../components/LoginCharacter'
 
 const Login = () => {
   const navigate = useNavigate()
+  const { login } = useAuth()
 
   const [emailOrUsername, setEmailOrUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -22,16 +23,10 @@ const Login = () => {
     setLoading(true)
 
     try {
-      const response = await axios.post('http://localhost:8080/api/auth/login', {
+      await login({
         emailOrUsername,
         password,
       })
-
-      const token = response.data.token
-      localStorage.setItem('jwtToken', token)
-
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
-
       navigate('/')
     } catch (err) {
       console.error(err)
