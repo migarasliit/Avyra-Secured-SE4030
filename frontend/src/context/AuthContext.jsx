@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import api from "../services/api";
+import api, { getCookie, ensureCsrfToken } from "../services/api";
 
 const AuthContext = createContext();
 
@@ -25,14 +25,17 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  // Run on mount: verify session
+  // Run on mount: verify session and seed CSRF token
   useEffect(() => {
     checkAuth();
   }, [checkAuth]);
 
-  // Login handler: Authenticate, backend sets HttpOnly cookie, verify user
+  // Login handler: Ensure CSRF token exists, authenticate, backend sets HttpOnly cookie, verify user
   const login = async (credentials) => {
     if (credentials) {
+      if (!getCookie("XSRF-TOKEN")) {
+        await ensureCsrfToken();
+      }
       await api.post("/api/auth/login", credentials);
     }
     await checkAuth();
@@ -42,6 +45,9 @@ export const AuthProvider = ({ children }) => {
   // Logout handler: Ask backend to expire HttpOnly cookie and clear state
   const logout = async () => {
     try {
+      if (!getCookie("XSRF-TOKEN")) {
+        await ensureCsrfToken();
+      }
       await api.post("/api/auth/logout");
     } catch (err) {
       console.error("Logout request failed:", err);
