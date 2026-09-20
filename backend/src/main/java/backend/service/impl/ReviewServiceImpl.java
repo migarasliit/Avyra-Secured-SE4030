@@ -9,6 +9,8 @@ import backend.repository.GameRepository;
 import backend.repository.ReviewRepository;
 import backend.service.ReviewService;
 import backend.service.UserService;
+import jakarta.persistence.EntityNotFoundException;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -75,19 +77,12 @@ public class ReviewServiceImpl implements ReviewService {
     public void deleteReview(Long reviewId) {
         User user = userService.getAuthenticatedUser();
 
-        // First verify the review exists and belongs to the user
-        Review review = reviewRepo.findById(reviewId)
-                .orElseThrow(() -> new RuntimeException("Review not found"));
-
-        // if (!review.getUser().getId().equals(user.getId())) {
-        //     throw new RuntimeException("You can only delete your own reviews");
-        // }
-        
-        // Throw AccessDeniedException instead of RuntimeException for auth failures
-        if (!review.getUser().getId().equals(user.getId())) {
-            throw new AccessDeniedException("You can only delete your own reviews");
+        // Fix: single query, ownership enforced in DB, 0 rows => not yours OR not found.
+        // We return 404 either way to avoid revealing which review IDs exist.
+        int deleted = reviewRepo.deleteByIdAndUser(reviewId, user);
+        if (deleted == 0) {
+            throw new EntityNotFoundException("Review not found");
         }
-        
-        reviewRepo.deleteByIdAndUser(reviewId, user);
+
     }
 }
