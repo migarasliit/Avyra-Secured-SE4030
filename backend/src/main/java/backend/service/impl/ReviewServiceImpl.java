@@ -10,8 +10,13 @@ import backend.repository.ReviewRepository;
 import backend.service.ReviewService;
 import backend.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.security.access.AccessDeniedException;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -74,10 +79,15 @@ public class ReviewServiceImpl implements ReviewService {
         Review review = reviewRepo.findById(reviewId)
                 .orElseThrow(() -> new RuntimeException("Review not found"));
 
+        // if (!review.getUser().getId().equals(user.getId())) {
+        //     throw new RuntimeException("You can only delete your own reviews");
+        // }
+        
+        // Throw AccessDeniedException instead of RuntimeException for auth failures
         if (!review.getUser().getId().equals(user.getId())) {
-            throw new RuntimeException("You can only delete your own reviews");
+            throw new AccessDeniedException("You can only delete your own reviews");
         }
-
+        
         reviewRepo.deleteByIdAndUser(reviewId, user);
     }
 }
