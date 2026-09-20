@@ -43,6 +43,7 @@ public class ReviewController {
     // }
 
     // Now the attacker can't distinguish "not found" from "not yours" via the response body. And you return the correct HTTP status code
+    // Remove exception message leakage + correct status codes
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteReview(@PathVariable Long id) {
         reviewService.deleteReview(id);
