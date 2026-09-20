@@ -32,13 +32,20 @@ public class ReviewController {
         }
     }
 
+    // @DeleteMapping("/{id}")
+    // public ResponseEntity<?> deleteReview(@PathVariable Long id) {
+    //     try {
+    //         reviewService.deleteReview(id);
+    //         return ResponseEntity.ok("Review deleted successfully");
+    //     } catch (RuntimeException e) {
+    //         return ResponseEntity.badRequest().body(e.getMessage());
+    //     }
+    // }
+
+    // Now the attacker can't distinguish "not found" from "not yours" via the response body. And you return the correct HTTP status code
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteReview(@PathVariable Long id) {
-        try {
-            reviewService.deleteReview(id);
-            return ResponseEntity.ok("Review deleted successfully");
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+        reviewService.deleteReview(id);
+        return ResponseEntity.ok("Review deleted successfully");
     }
 }
