@@ -6,6 +6,7 @@ import backend.service.ReviewService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -44,6 +45,7 @@ public class ReviewController {
 
     // Now the attacker can't distinguish "not found" from "not yours" via the response body. And you return the correct HTTP status code
     // Remove exception message leakage + correct status codes
+    @PreAuthorize("isAuthenticated()") // Enable method security
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteReview(@PathVariable Long id) {
         reviewService.deleteReview(id);
