@@ -3,7 +3,7 @@
 This repository contains the security-enhanced version of the Avyra Game Download Platform, developed as part of the SE4030 Secure Software Development module assignment.
 
 ### 👥 Team Members
-- [Member 1 Name] - [Index Number]
+- Shalon Fernando - IT22362544
 - [Member 2 Name] - [Index Number]
 - [Member 3 Name] - [Index Number]
 - [Member 4 Name] - [Index Number]
@@ -147,7 +147,7 @@ MIT License. See LICENSE for details.
 
 ## Environment Setup
 
-The backend reads several secrets from OS environment variables (via `${VAR}` placeholders and Spring Boot's environment-variable-to-property relaxed binding in `application.properties`) instead of hardcoding them. **The app will not start** without at minimum `JWT_SECRET`, `GEMINI_API_KEY` and `HUGGINGFACE_API_KEY` set.
+The backend reads several secrets from OS environment variables (via `${VAR}` placeholders and Spring Boot's environment-variable-to-property relaxed binding in `application.properties`) instead of hardcoding them. **The app will not start** without at minimum `JWT_SECRET` and `GEMINI_API_KEY` set.
 
 A template listing every variable, with comments, lives at [`backend/.env.example`](backend/.env.example). Copy it and fill in real values:
 
@@ -164,8 +164,6 @@ $env:JWT_SECRET = "a-random-32-plus-character-secret"
 $env:JWT_EXPIRATION_MS = "86400000"
 $env:GEMINI_API_KEY = "your-gemini-api-key"
 $env:GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
-$env:HUGGINGFACE_API_KEY = "your-huggingface-api-key"
-$env:HUGGINGFACE_MODEL_LLM = "your-model-id"
 $env:GOOGLE_CLIENT_ID = "your-google-oauth-client-id"
 $env:GOOGLE_CLIENT_SECRET = "your-google-oauth-client-secret"
 cd backend
@@ -183,7 +181,7 @@ set +a
 **Option C — IDE run configuration:** in IntelliJ/Eclipse, open the Spring Boot run configuration for `backend` and add each variable under "Environment variables" instead of exporting them in a shell.
 
 Required vs. optional:
-- `JWT_SECRET`, `GEMINI_API_KEY`, `HUGGINGFACE_API_KEY` — **required**, no default, app fails to start without them.
+- `JWT_SECRET`, `GEMINI_API_KEY` — **required**, no default, app fails to start without them.
 - `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` — optional for the app to boot (placeholder defaults exist), but a real Google login will not complete without them. See [`docs/SECURITY-VULN-7-8.md`](docs/SECURITY-VULN-7-8.md) for how to obtain Google OAuth2 credentials.
 - `APP_SECURITY_COOKIE_SECURE` — defaults to `false` for local HTTP testing; set to `true` for any HTTPS/deployed environment so the JWT cookie is only sent over TLS.
 
