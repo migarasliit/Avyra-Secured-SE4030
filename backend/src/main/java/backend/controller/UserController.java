@@ -87,15 +87,5 @@ public class UserController {
         ));
     }
 
-    @ControllerAdvice
-    public class GlobalExceptionHandler {
-
-        @ExceptionHandler(Exception.class)
-        public ResponseEntity<?> handleError(Exception ex) {
-            ex.printStackTrace(); // Logs to console
-            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
-        }
-    }
-
 }
 
