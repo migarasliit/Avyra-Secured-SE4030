@@ -57,6 +57,7 @@ https://avyra-lac.vercel.app/
 - [Backend Overview](#backend-overview)
 - [Tech Stack](#tech-stack)
 - [Project Structure](#project-structure)
+- [Environment Setup](#environment-setup)
 - [How to Run](#how-to-run)
 - [Screenshots](#screenshots)
 - [License](#license)
@@ -141,6 +142,52 @@ The platform uses PayPal for secure payment processing. Users can checkout their
 
 ##License
 MIT License. See LICENSE for details.
+
+---
+
+## Environment Setup
+
+The backend reads several secrets from OS environment variables (via `${VAR}` placeholders and Spring Boot's environment-variable-to-property relaxed binding in `application.properties`) instead of hardcoding them. **The app will not start** without at minimum `JWT_SECRET`, `GEMINI_API_KEY` and `HUGGINGFACE_API_KEY` set.
+
+A template listing every variable, with comments, lives at [`backend/.env.example`](backend/.env.example). Copy it and fill in real values:
+
+```sh
+cd backend
+cp .env.example .env   # then edit .env with real secrets - never commit it
+```
+
+> **Note:** this project does not use a dotenv-loading library, so `backend/.env` is *not* read automatically by Spring Boot — it's a reference file. You still need to load those values into your actual shell/session or IDE run configuration before starting the app, using one of the options below.
+
+**Option A — PowerShell (per session):**
+```powershell
+$env:JWT_SECRET = "a-random-32-plus-character-secret"
+$env:JWT_EXPIRATION_MS = "86400000"
+$env:GEMINI_API_KEY = "your-gemini-api-key"
+$env:GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
+$env:HUGGINGFACE_API_KEY = "your-huggingface-api-key"
+$env:HUGGINGFACE_MODEL_LLM = "your-model-id"
+$env:GOOGLE_CLIENT_ID = "your-google-oauth-client-id"
+$env:GOOGLE_CLIENT_SECRET = "your-google-oauth-client-secret"
+cd backend
+.\mvnw spring-boot:run
+```
+
+**Option B — bash / Git Bash / macOS / Linux (per session):**
+```sh
+set -a
+source .env
+set +a
+./mvnw spring-boot:run
+```
+
+**Option C — IDE run configuration:** in IntelliJ/Eclipse, open the Spring Boot run configuration for `backend` and add each variable under "Environment variables" instead of exporting them in a shell.
+
+Required vs. optional:
+- `JWT_SECRET`, `GEMINI_API_KEY`, `HUGGINGFACE_API_KEY` — **required**, no default, app fails to start without them.
+- `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` — optional for the app to boot (placeholder defaults exist), but a real Google login will not complete without them. See [`docs/SECURITY-VULN-7-8.md`](docs/SECURITY-VULN-7-8.md) for how to obtain Google OAuth2 credentials.
+- `APP_SECURITY_COOKIE_SECURE` — defaults to `false` for local HTTP testing; set to `true` for any HTTPS/deployed environment so the JWT cookie is only sent over TLS.
+
+The frontend needs no environment variables — it calls the backend at a hardcoded `http://localhost:8080` for local development.
 
 ---
 
