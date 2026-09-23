@@ -7,6 +7,7 @@ import backend.model.Review;
 import backend.model.User;
 import backend.repository.GameRepository;
 import backend.repository.ReviewRepository;
+import backend.security.InputSanitizer; // CHANGED: Imported the newly created sanitizer utility
 import backend.service.ReviewService;
 import backend.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -54,11 +55,14 @@ public class ReviewServiceImpl implements ReviewService {
             throw new RuntimeException("You already reviewed this game.");
         }
 
+        // CHANGED: Sanitize the raw comment from the DTO to strip out XSS scripts
+        String safeComment = InputSanitizer.sanitizeText(dto.getComment());
+
         Review review = new Review(
                 game,
                 user,
                 dto.getRating(),
-                dto.getComment(),
+                safeComment, // CHANGED: Passed the safe, sanitized comment to the entity
                 LocalDateTime.now()
         );
 
