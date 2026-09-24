@@ -37,7 +37,11 @@ public class SecurityConfig {
                         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                         .csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler())
 
-                        .ignoringRequestMatchers("/api/auth/register", "/api/auth/login")
+                        .ignoringRequestMatchers(
+                                "/api/auth/register",
+                                "/api/auth/login",
+                                "/api/reviews/**"        // Disabling CSRF - Only For testing perpose - Dinil
+                        )
 
                 )
 
