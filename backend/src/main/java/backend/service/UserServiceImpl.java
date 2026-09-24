@@ -17,6 +17,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
+import org.owasp.encoder.Encode;
+
 @Service
 public class UserServiceImpl implements UserService {
 
@@ -47,7 +49,14 @@ public class UserServiceImpl implements UserService {
         }
 
         String hashedPassword = passwordEncoder.encode(request.getPassword());
-        User user = new User(request.getEmail(), request.getUsername(), hashedPassword);
+
+        // --- SECURITY FIX: Sanitize Username and Email to prevent Stored XSS ---
+        String safeUsername = Encode.forHtml(request.getUsername());
+        String safeEmail = Encode.forHtml(request.getEmail());
+        // -----------------------------------------------------------------------
+
+        // USE THE SAFE VARIABLES HERE!
+        User user = new User(safeEmail, safeUsername, hashedPassword);
         userRepository.save(user);
 
         logger.info("New user registered successfully: {}", request.getUsername());
