@@ -36,6 +36,13 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf
                         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                         .csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler())
+
+                        .ignoringRequestMatchers(
+                                "/api/auth/register",
+                                "/api/auth/login",
+                                "/api/reviews/**"        // Disabling CSRF - Only For testing perpose - Dinil
+                        )
+
                 )
 
                 // 3. Security Headers: CSP, nosniff, HSTS, frameOptions deny
