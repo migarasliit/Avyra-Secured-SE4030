@@ -11,12 +11,13 @@ import org.springframework.web.bind.annotation.*;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 @RestController
 @RequestMapping("/api/downloads")
 public class DownloadController {
 
-    // Base directory where your zip files are stored (outside static/public)
     @Value("${download.files.path}")
     private String downloadFilesPath;
 
@@ -25,17 +26,27 @@ public class DownloadController {
             @PathVariable String filename,
             Authentication authentication) throws IOException {
 
-        // Check if user is authenticated
+        // 1. Check if user is authenticated
         if (authentication == null || !authentication.isAuthenticated()) {
             return ResponseEntity.status(401).build(); // Unauthorized
         }
 
-        // Sanitize filename to prevent path traversal etc if needed
-        if (filename.contains("..") || filename.contains("/") || filename.contains("\\")) {
-            return ResponseEntity.badRequest().build();
-        }
+        // --- SECURITY FIX: Strict Path Traversal Prevention ---
+        // 1. Get the absolute, normalized base directory (e.g., F:/Avyra/frontend/public/downloads)
+        Path baseDirectory = Paths.get(downloadFilesPath).toAbsolutePath().normalize();
 
-        File file = new File(downloadFilesPath, filename);
+        // 2. Resolve the requested filename and normalize it
+        // (This automatically resolves any "../" or URL-encoded traversal tricks)
+        Path targetPath = baseDirectory.resolve(filename).normalize();
+
+        // 3. Verify the target path is STRICTLY within the base directory
+        if (!targetPath.startsWith(baseDirectory)) {
+            throw new SecurityException("Access Denied: Invalid file path requested.");
+        }
+        // ------------------------------------------------------
+
+        File file = targetPath.toFile();
+
         if (!file.exists() || !file.isFile()) {
             return ResponseEntity.notFound().build();
         }
