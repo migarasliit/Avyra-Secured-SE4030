@@ -26,13 +26,9 @@ frontend/public/downloads/
 *.glb
 
 # Environment & Secrets
-.env
-.env.local
-.env.production
 /backend/src/main/resources/application.properties
 
 # IDE & OS
-.vscode/
 .idea/
 *.iml
 .DS_Store
@@ -41,3 +37,4 @@ Thumbs.db
 # Logs
 *.log
 npm-debug.log*
+config.bat
