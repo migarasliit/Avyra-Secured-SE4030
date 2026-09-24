@@ -85,7 +85,6 @@
         </dependency>
 
         <!-- OWASP Java Encoder for XSS Prevention -->
-        <!-- OWASP Java Encoder for XSS Prevention -->
         <dependency>
             <groupId>org.owasp.encoder</groupId>
             <artifactId>encoder</artifactId>
