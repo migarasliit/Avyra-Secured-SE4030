@@ -84,6 +84,14 @@
             <artifactId>jackson-databind</artifactId>
         </dependency>
 
+        <!-- OWASP Java Encoder for XSS Prevention -->
+        <!-- OWASP Java Encoder for XSS Prevention -->
+        <dependency>
+            <groupId>org.owasp.encoder</groupId>
+            <artifactId>encoder</artifactId>
+            <version>1.2.3</version>
+        </dependency>
+
         <!-- Testing -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
