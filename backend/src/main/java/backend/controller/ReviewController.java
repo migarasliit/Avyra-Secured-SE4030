@@ -23,14 +23,21 @@ public class ReviewController {
         return ResponseEntity.ok(reviewService.getReviewsForGame(gameId));
     }
 
+    // @PostMapping
+    // public ResponseEntity<?> postReview(@Valid @RequestBody ReviewRequestDTO reviewDto) {
+    //     try {
+    //         reviewService.addReview(reviewDto);
+    //         return ResponseEntity.ok("Review added successfully");
+    //     } catch (RuntimeException e) {
+    //         return ResponseEntity.badRequest().body(e.getMessage());
+    //     }
+    // }
+
+    // Remove exception message leakage + correct status codes - Dinil
     @PostMapping
     public ResponseEntity<?> postReview(@Valid @RequestBody ReviewRequestDTO reviewDto) {
-        try {
-            reviewService.addReview(reviewDto);
-            return ResponseEntity.ok("Review added successfully");
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+        reviewService.addReview(reviewDto);
+        return ResponseEntity.ok("Review added successfully");
     }
 
     // @DeleteMapping("/{id}")
