@@ -84,7 +84,7 @@
             <artifactId>jackson-databind</artifactId>
         </dependency>
 
-        <!-- OWASP Java Encoder for XSS Prevention -->
+
         <dependency>
             <groupId>org.owasp.encoder</groupId>
             <artifactId>encoder</artifactId>
