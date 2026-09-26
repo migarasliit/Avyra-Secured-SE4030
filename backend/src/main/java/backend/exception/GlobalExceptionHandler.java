@@ -5,9 +5,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -38,6 +41,22 @@ public class GlobalExceptionHandler {
     public ResponseEntity<?> handleAuthenticationError(AuthenticationException ex) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(Map.of("error", "Authentication required"));
+    }
+
+    // @Valid failures (e.g. blank/malformed fields on register/login) were falling through
+    // to the generic 500 handler below instead of a proper 400, since
+    // MethodArgumentNotValidException isn't an AuthenticationException. Field-level messages
+    // are safe to return here: they describe the caller's own submitted input, not server
+    // internals, so this doesn't conflict with the server.error.include-message=never posture
+    // for unhandled/internal errors.
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<?> handleValidationError(MethodArgumentNotValidException ex) {
+        Map<String, String> fieldErrors = new HashMap<>();
+        for (FieldError fe : ex.getBindingResult().getFieldErrors()) {
+            fieldErrors.put(fe.getField(), fe.getDefaultMessage());
+        }
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(Map.of("error", "Validation failed", "fields", fieldErrors));
     }
 
     @ExceptionHandler(Exception.class)
