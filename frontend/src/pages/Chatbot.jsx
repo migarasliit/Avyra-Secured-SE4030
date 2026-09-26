@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
-import axios from "axios";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import api from "../services/api";
 
 const Chatbot = () => {
   const [messages, setMessages] = useState([
@@ -43,7 +43,7 @@ const Chatbot = () => {
 
   const loadGames = async () => {
     try {
-      const response = await axios.get('http://localhost:8080/api/chatbot/games');
+      const response = await api.get('/api/chatbot/games');
       if (response.data.success) {
         setGames(response.data.games || []);
       }
@@ -75,7 +75,7 @@ const Chatbot = () => {
     setError(null);
 
     try {
-      const response = await axios.post('http://localhost:8080/api/chatbot/chat', {
+      const response = await api.post('/api/chatbot/chat', {
         message: messageText.trim()
       });
 

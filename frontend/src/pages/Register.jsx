@@ -1,10 +1,10 @@
 import React, { useState } from "react";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { Canvas } from '@react-three/fiber';
 import NavBar from '../components/Navbar';
 import Footer from '../components/Footer';
 import {RegisterCharacter} from '../components/RegisterCharacter';
+import api, { ensureCsrfToken, getCookie } from '../services/api';
 
 const Register = () => {
   const navigate = useNavigate();
@@ -24,7 +24,10 @@ const Register = () => {
     setLoading(true);
 
     try {
-      await axios.post("http://localhost:8080/api/auth/register", {
+      if (!getCookie("XSRF-TOKEN")) {
+        await ensureCsrfToken();
+      }
+      await api.post("/api/auth/register", {
         email,
         username,
         password,

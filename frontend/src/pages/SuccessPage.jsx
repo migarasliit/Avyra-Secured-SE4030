@@ -2,6 +2,7 @@ import React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Footer from "../components/Footer";
 import NavBar from "../components/Navbar";
+import { downloadFile } from "../utils/downloadFile";
 
 function getFilenameFromGameTitle(title) {
   return title.toLowerCase().replace(/\s+/g, "_") + ".zip";
@@ -12,26 +13,10 @@ const SuccessPage = () => {
   const navigate = useNavigate();
   const gameTitle = location.state?.gameTitle || "game";
   const filename = getFilenameFromGameTitle(gameTitle);
-  const token = localStorage.getItem("jwtToken");
 
   const handleDownload = async () => {
     try {
-      const response = await fetch(`http://localhost:8080/api/downloads/${filename}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      if (!response.ok) throw new Error("Download failed");
-
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
+      await downloadFile(filename);
     } catch (error) {
       alert(`Download failed: ${error.message}`);
     }

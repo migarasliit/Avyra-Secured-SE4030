@@ -2,16 +2,17 @@ import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
-import axios from "axios";
+import api from "../services/api";
+import { useAuth } from "../context/AuthContext";
 import { useWishlist } from "../context/WishlistContext";
 
 const Profile = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState(null);
+  const { user, isAuthenticated, loading: authLoading, logout } = useAuth();
   const [avatar, setAvatar] = useState(null);
   const [cart, setCart] = useState([]);
   const [activeTab, setActiveTab] = useState("overview");
-  
+
   const { wishlist, loading: wishlistLoading } = useWishlist();
 
   // Password change fields
@@ -24,42 +25,31 @@ const Profile = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const token = localStorage.getItem("jwtToken");
-
   useEffect(() => {
-    if (!token) {
+    if (authLoading) return; // wait for AuthContext's initial /api/auth/me check
+    if (!isAuthenticated) {
       navigate("/login");
       return;
     }
 
     const fetchData = async () => {
       try {
-        axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-        
-        const userRes = await axios.get("http://localhost:8080/api/auth/me");
-        setUser(userRes.data);
-        setAvatar(null);
-        
-        const cartRes = await axios.get("http://localhost:8080/api/cart");
+        const cartRes = await api.get("/api/cart");
         setCart(cartRes.data);
-        
+        setAvatar(null);
         setError(null);
       } catch (err) {
         setError("Failed to load account data. Please login again.");
-        localStorage.removeItem("jwtToken");
-        setTimeout(() => navigate("/login"), 2000);
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
-  }, [token, navigate]);
+  }, [authLoading, isAuthenticated, navigate]);
 
   const handleLogout = () => {
-    localStorage.removeItem("jwtToken");
-    delete axios.defaults.headers.common["Authorization"];
-    navigate("/login");
+    logout();
   };
 
   const handlePasswordChange = async (e) => {

@@ -13,7 +13,6 @@ function getFilenameFromGameTitle(title) {
 const DownloadDetails = ({ downloads }) => {
   const { orderId } = useParams();
   const navigate = useNavigate();
-  const token = localStorage.getItem("jwtToken");
 
   const order = downloads.find((o) => (o.orderId || o.id) === orderId);
 
@@ -23,7 +22,7 @@ const DownloadDetails = ({ downloads }) => {
 
   const handleDownload = async (filename) => {
     try {
-      await downloadFile(filename, token);
+      await downloadFile(filename);
     } catch (error) {
       alert(`Download failed: ${error.message}`);
     }

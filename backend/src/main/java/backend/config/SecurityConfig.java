@@ -34,8 +34,11 @@ public class SecurityConfig {
         this.oAuth2AuthenticationSuccessHandler = oAuth2AuthenticationSuccessHandler;
     }
 
+    // static: avoids a circular dependency, since OAuth2AuthenticationSuccessHandler
+    // (injected into this class's constructor) itself depends on PasswordEncoder.
+    // A static @Bean method can be invoked without first fully constructing SecurityConfig.
     @Bean
-    public PasswordEncoder passwordEncoder() {
+    public static PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 

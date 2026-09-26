@@ -1,14 +1,16 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import NavBar from "../components/Navbar";
 import Footer from "../components/Footer";
+import api from "../services/api";
+import { useAuth } from "../context/AuthContext";
 
 const PAYPAL_CLIENT_ID ="AQI0v2iVOX7LKr4xDLL2eH6pKKrj-G2aXGQFByWp4w3B9m73fqL6_mfzAdP5Ii1ujVhQK3rlJkNERmAc";
 
 const Cart = () => {
   const navigate = useNavigate();
+  const { isAuthenticated, loading: authLoading } = useAuth();
   const [cartItems, setCartItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -18,26 +20,16 @@ const Cart = () => {
   const [checkoutError, setCheckoutError] = useState(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
 
-  // Set JWT token header on axios default
-  const setAuthHeader = () => {
-    const token = localStorage.getItem("jwtToken");
-    if (token) {
-      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-      return true;
-    }
-    return false;
-  };
-
   // Fetch user's cart items
   const fetchCartItems = async () => {
-    if (!setAuthHeader()) {
+    if (!isAuthenticated) {
       setError("You must be logged in to view your cart.");
       setLoading(false);
       return;
     }
     try {
       setLoading(true);
-      const response = await axios.get("http://localhost:8080/api/cart");
+      const response = await api.get("/api/cart");
       setCartItems(response.data);
       setError(null);
     } catch (err) {
@@ -48,21 +40,17 @@ const Cart = () => {
   };
 
   useEffect(() => {
+    if (authLoading) return; // wait for AuthContext's initial /api/auth/me check
     fetchCartItems();
-  }, []);
+  }, [authLoading, isAuthenticated]);
 
   // Handle quantity changes for cart items
   const handleQuantityChange = async (gameId, newQuantity) => {
-    if (newQuantity < 1 || updating) return;
-    if (!setAuthHeader()) return;
+    if (newQuantity < 1 || updating || !isAuthenticated) return;
     try {
       setUpdating(true);
-      await axios.delete(`http://localhost:8080/api/cart/${gameId}`);
-      await axios.post(
-        `http://localhost:8080/api/cart/${gameId}`,
-        null,
-        { params: { quantity: newQuantity } }
-      );
+      await api.delete(`/api/cart/${gameId}`);
+      await api.post(`/api/cart/${gameId}`, null, { params: { quantity: newQuantity } });
       await fetchCartItems();
       setError(null);
     } catch (err) {
@@ -74,10 +62,10 @@ const Cart = () => {
 
   // Remove item from cart
   const handleRemoveItem = async (gameId) => {
-    if (!setAuthHeader()) return;
+    if (!isAuthenticated) return;
     try {
       setUpdating(true);
-      await axios.delete(`http://localhost:8080/api/cart/${gameId}`);
+      await api.delete(`/api/cart/${gameId}`);
       await fetchCartItems();
       setError(null);
     } catch (err) {
@@ -92,12 +80,12 @@ const Cart = () => {
     0
   );
 
-  // Redirect to login if no token
+  // Redirect to login if not authenticated
   useEffect(() => {
-    if (!localStorage.getItem("jwtToken")) {
+    if (!authLoading && !isAuthenticated) {
       navigate("/login");
     }
-  }, [navigate]);
+  }, [authLoading, isAuthenticated, navigate]);
 
   return (
     <>
@@ -120,7 +108,7 @@ const Cart = () => {
           ) : error ? (
             <div className="error-neon max-w-xl mx-auto">
               <p>{error}</p>
-              {!localStorage.getItem("jwtToken") && (
+              {!isAuthenticated && (
                 <button
                   onClick={() => navigate("/login")}
                   className="btn-neon mt-6 px-6 py-3 w-full rounded font-mono tracking-wide text-lg"
@@ -240,27 +228,17 @@ const Cart = () => {
                   <button
                     className="btn-neon mt-6 w-full py-3 rounded-xl font-bold text-lg"
                     onClick={async () => {
-                      const token = localStorage.getItem("jwtToken");
                       const gameTitle = cartItems?.[0]?.title || "game"; // Fallback title
                       const filename =
                         gameTitle.toLowerCase().replace(/\s+/g, "_") + ".zip";
 
                       try {
-                        const response = await fetch(
-                          `http://localhost:8080/api/downloads/${filename}`,
-                          {
-                            headers: {
-                              Authorization: `Bearer ${token}`,
-                            },
-                          }
+                        const response = await api.get(
+                          `/api/downloads/${filename}`,
+                          { responseType: "blob" }
                         );
 
-                        if (!response.ok) {
-                          throw new Error("Download failed");
-                        }
-
-                        const blob = await response.blob();
-                        const url = window.URL.createObjectURL(blob);
+                        const url = window.URL.createObjectURL(response.data);
                         const a = document.createElement("a");
                         a.href = url;
                         a.download = filename;
@@ -329,8 +307,6 @@ const Cart = () => {
                         }
 
                         // Send the payment confirmation to your backend
-                        const token = localStorage.getItem("jwtToken");
-
                         console.log(
                           "Sending payment confirmation to backend..."
                         );
@@ -343,15 +319,9 @@ const Cart = () => {
 
                         console.log("Backend payload:", payload);
 
-                        const response = await axios.post(
-                          "http://localhost:8080/api/orders/paypal-complete",
-                          payload,
-                          {
-                            headers: {
-                              Authorization: `Bearer ${token}`,
-                              "Content-Type": "application/json",
-                            },
-                          }
+                        const response = await api.post(
+                          "/api/orders/paypal-complete",
+                          payload
                         );
 
                         console.log("Backend response:", response.data);

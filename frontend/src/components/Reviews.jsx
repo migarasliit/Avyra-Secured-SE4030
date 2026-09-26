@@ -1,41 +1,31 @@
 // src/components/Reviews.jsx
-import axios from "axios";
 import React, { useState, useEffect } from "react";
+import api from "../services/api";
+import { useAuth } from "../context/AuthContext";
 
-const BASE_URL = "http://localhost:8080/api/reviews";
+const REVIEWS_PATH = "/api/reviews";
 
 function Reviews() {
+  const { isAuthenticated } = useAuth();
   const [reviews, setReviews] = useState([]);
   const [reviewText, setReviewText] = useState("");
 
   useEffect(() => {
     // Fetch all reviews (GET is public)
-    axios
-      .get(BASE_URL)
+    api
+      .get(REVIEWS_PATH)
       .then((res) => setReviews(res.data))
       .catch((err) => console.error("Failed to load reviews", err));
   }, []);
 
   const submitReview = async () => {
-    const token = localStorage.getItem("jwtToken");
-    if (!token) {
+    if (!isAuthenticated) {
       alert("You must be logged in to submit a review");
       return;
     }
 
-    console.log("Submitting review with token:", token);
-
     try {
-      const response = await axios.post(
-        BASE_URL,
-        { text: reviewText },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      console.log("Review added:", response.data);
+      const response = await api.post(REVIEWS_PATH, { text: reviewText });
       setReviews((prev) => [...prev, response.data]);
       setReviewText("");
     } catch (err) {
@@ -45,21 +35,13 @@ function Reviews() {
   };
 
   const deleteReview = async (id) => {
-    const token = localStorage.getItem("jwtToken");
-    if (!token) {
+    if (!isAuthenticated) {
       alert("You must be logged in to delete a review");
       return;
     }
 
-    console.log(`Deleting review id ${id} with token:`, token);
-
     try {
-      await axios.delete(`${BASE_URL}/${id}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      console.log("Review deleted:", id);
+      await api.delete(`${REVIEWS_PATH}/${id}`);
       setReviews((prev) => prev.filter((rev) => rev.id !== id));
     } catch (err) {
       console.error("Error deleting review:", err);
