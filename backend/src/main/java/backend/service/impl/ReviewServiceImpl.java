@@ -7,11 +7,19 @@ import backend.model.Review;
 import backend.model.User;
 import backend.repository.GameRepository;
 import backend.repository.ReviewRepository;
+import backend.security.InputSanitizer; // CHANGED: Imported the newly created sanitizer utility
 import backend.service.ReviewService;
 import backend.service.UserService;
+import jakarta.persistence.EntityNotFoundException;
+
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.security.access.AccessDeniedException;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -54,11 +62,14 @@ public class ReviewServiceImpl implements ReviewService {
             throw new RuntimeException("You already reviewed this game.");
         }
 
+        // CHANGED: Sanitize the raw comment from the DTO to strip out XSS scripts
+        String safeComment = InputSanitizer.sanitizeText(dto.getComment());
+
         Review review = new Review(
                 game,
                 user,
                 dto.getRating(),
-                dto.getComment(),
+                safeComment, // CHANGED: Passed the safe, sanitized comment to the entity
                 LocalDateTime.now()
         );
 
@@ -70,14 +81,12 @@ public class ReviewServiceImpl implements ReviewService {
     public void deleteReview(Long reviewId) {
         User user = userService.getAuthenticatedUser();
 
-        // First verify the review exists and belongs to the user
-        Review review = reviewRepo.findById(reviewId)
-                .orElseThrow(() -> new RuntimeException("Review not found"));
-
-        if (!review.getUser().getId().equals(user.getId())) {
-            throw new RuntimeException("You can only delete your own reviews");
+        // Fix: single query, ownership enforced in DB, 0 rows => not yours OR not found.
+        // We return 404 either way to avoid revealing which review IDs exist.
+        int deleted = reviewRepo.deleteByIdAndUser(reviewId, user);
+        if (deleted == 0) {
+            throw new EntityNotFoundException("Review not found");
         }
 
-        reviewRepo.deleteByIdAndUser(reviewId, user);
     }
 }

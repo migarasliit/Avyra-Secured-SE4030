@@ -4,6 +4,7 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 public class ReviewRequestDTO {
     @NotNull
@@ -13,7 +14,9 @@ public class ReviewRequestDTO {
     @Max(5)
     private int rating;
 
+    // Add @Size to comment
     @NotBlank
+    @Size(max = 1000, message = "Comment must be at most 1000 characters")
     private String comment;
 
     // Getters and Setters

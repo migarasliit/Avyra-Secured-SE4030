@@ -16,9 +16,17 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
 
     boolean existsByUserIdAndGameId(Long userId, Long gameId);
 
+    // @Modifying
+    // @Transactional
+    // @Query("DELETE FROM Review r WHERE r.id = :reviewId AND r.user = :user")
+    // void deleteByIdAndUser(@Param("reviewId") Long reviewId, @Param("user") User user);
+
     // Fixed: Added @Modifying and @Transactional annotations
+
+    // Make deleteByIdAndUser return affected rows
     @Modifying
     @Transactional
     @Query("DELETE FROM Review r WHERE r.id = :reviewId AND r.user = :user")
-    void deleteByIdAndUser(@Param("reviewId") Long reviewId, @Param("user") User user);
+    int deleteByIdAndUser(@Param("reviewId") Long reviewId, @Param("user") User user);
+    
 }
