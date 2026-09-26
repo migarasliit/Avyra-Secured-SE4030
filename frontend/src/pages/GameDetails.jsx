@@ -1,15 +1,11 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import axios from "axios";
 import { mockGames } from '../mockGames';
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { useWishlist } from "../context/WishlistContext";
-
-// Create axios instance with base URL
-const api = axios.create({
-  baseURL: 'http://localhost:8080'
-});
+import { useAuth } from "../context/AuthContext";
+import api from "../services/api";
 
 const StarRating = ({ value = 5 }) => (
   <span aria-label={`${value} star rating`} className="text-yellow-400 text-xl">
@@ -158,6 +154,8 @@ const GameDetails = () => {
   const [loading, setLoading] = useState(true);
 
   const { isInWishlist, addToWishlist, removeFromWishlist } = useWishlist();
+  const { isAuthenticated, user } = useAuth();
+  const currentUsername = user?.username ?? null;
 
   const [reviews, setReviews] = useState([]);
   const [reviewLoading, setReviewLoading] = useState(false);
@@ -165,21 +163,6 @@ const GameDetails = () => {
   const [reviewError, setReviewError] = useState(null);
   const [reviewSuccess, setReviewSuccess] = useState(null);
   const [submitting, setSubmitting] = useState(false);
-
-  const [currentUsername, setCurrentUsername] = useState(null);
-
-  // Decode JWT to get current username once
-  useEffect(() => {
-    try {
-      const token = localStorage.getItem("jwtToken");
-      if (token) {
-        const payload = JSON.parse(atob(token.split(".")[1]));
-        setCurrentUsername(payload.sub);
-      }
-    } catch {
-      setCurrentUsername(null);
-    }
-  }, []);
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -226,14 +209,10 @@ const GameDetails = () => {
     );
 
   const handleAddCart = async () => {
-    if (!localStorage.getItem("jwtToken")) return navigate("/login");
+    if (!isAuthenticated) return navigate("/login");
 
     try {
-      await api.post(
-        `/api/cart/${game.id}?quantity=1`,
-        {},
-        { headers: { Authorization: `Bearer ${localStorage.getItem("jwtToken")}` } }
-      );
+      await api.post(`/api/cart/${game.id}?quantity=1`, {});
       alert("Added to cart!");
     } catch {
       alert("Failed to add to cart.");
@@ -241,7 +220,7 @@ const GameDetails = () => {
   };
 
   const toggleWishlist = async () => {
-    if (!localStorage.getItem("jwtToken")) return navigate("/login");
+    if (!isAuthenticated) return navigate("/login");
 
     try {
       if (isInWishlist(game.id)) {
@@ -257,7 +236,7 @@ const GameDetails = () => {
   const submitReview = async (e) => {
     e.preventDefault();
 
-    if (!localStorage.getItem("jwtToken")) {
+    if (!isAuthenticated) {
       setReviewError("You need to login to submit a review.");
       return;
     }
@@ -276,15 +255,11 @@ const GameDetails = () => {
     setReviewError(null);
 
     try {
-      await api.post(
-        "/api/reviews",
-        {
-          gameId: game.id,
-          rating: newReview.rating,
-          comment: newReview.comment.trim(),
-        },
-        { headers: { Authorization: `Bearer ${localStorage.getItem("jwtToken")}` } }
-      );
+      await api.post("/api/reviews", {
+        gameId: game.id,
+        rating: newReview.rating,
+        comment: newReview.comment.trim(),
+      });
 
       setReviewSuccess("Review submitted successfully!");
       setNewReview({ rating: 5, comment: "" });
@@ -305,14 +280,12 @@ const GameDetails = () => {
 
   // Delete review handler
   const deleteReview = async (reviewId) => {
-    if (!localStorage.getItem("jwtToken")) return navigate("/login");
+    if (!isAuthenticated) return navigate("/login");
 
     if (!window.confirm("Are you sure you want to delete your review?")) return;
 
     try {
-      await api.delete(`/api/reviews/${reviewId}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("jwtToken")}` },
-      });
+      await api.delete(`/api/reviews/${reviewId}`);
 
       // Refresh reviews list after delete
       const reviewsRes = await api.get(`/api/reviews`, { params: { gameId: game.id } });

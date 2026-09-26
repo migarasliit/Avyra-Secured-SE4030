@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import NavBar from '../components/Navbar'
 import Footer from '../components/Footer'
 import { useAuth } from '../context/AuthContext'
+import GoogleLoginButton from '../components/GoogleLoginButton'
 
 import { Canvas } from '@react-three/fiber'
 import { LoginCharacter } from '../components/LoginCharacter'
@@ -187,6 +188,18 @@ const Login = () => {
               {loading ? "Logging in..." : "Login"}
             </button>
           </form>
+
+          {/* Divider */}
+          <div className="flex items-center my-6">
+            <div className="flex-grow border-t border-purple-800/60"></div>
+            <span className="px-3 text-xs font-mono text-purple-400 uppercase tracking-widest">
+              OR
+            </span>
+            <div className="flex-grow border-t border-purple-800/60"></div>
+          </div>
+
+          {/* Google OAuth 2.0 Login Button */}
+          <GoogleLoginButton disabled={loading} />
 
           <p className="mt-8 text-center text-purple-500 tracking-wide font-mono cursor-default select-none text-xs uppercase">
             &copy; 2025 AVYRA. All rights reserved.

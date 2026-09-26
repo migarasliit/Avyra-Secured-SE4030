@@ -1,40 +1,25 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import NavBar from "../components/Navbar";
 import Footer from "../components/Footer";
+import api from "../services/api";
+import { useAuth } from "../context/AuthContext";
 
 const Wishlist = () => {
   const navigate = useNavigate();
+  const { isAuthenticated, loading: authLoading } = useAuth();
   const [wishlist, setWishlist] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [removingItemId, setRemovingItemId] = useState(null);
 
-  const isLoggedIn = () => !!localStorage.getItem("jwtToken");
-
-  const setAuthHeader = () => {
-    const token = localStorage.getItem("jwtToken");
-    if (token) {
-      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-      return true;
-    }
-    return false;
-  };
-
   const fetchWishlist = async () => {
-    if (!setAuthHeader()) {
-      setError("You need to log in to view your wishlist.");
-      setLoading(false);
-      return;
-    }
     try {
       setLoading(true);
-      const response = await axios.get("http://localhost:8080/api/wishlist");
+      const response = await api.get("/api/wishlist");
       setWishlist(response.data);
       setError(null);
     } catch (err) {
-      console.error(err);
       setError(
         err.response?.data?.error || "Failed to load wishlist. Please try again."
       );
@@ -44,25 +29,21 @@ const Wishlist = () => {
   };
 
   useEffect(() => {
-    if (!isLoggedIn()) {
+    if (authLoading) return; // wait for AuthContext's initial /api/auth/me check
+    if (!isAuthenticated) {
       navigate("/login");
     } else {
       fetchWishlist();
     }
-  }, [navigate]);
+  }, [authLoading, isAuthenticated, navigate]);
 
   const handleRemove = async (gameId) => {
-    if (!setAuthHeader()) {
-      setError("You need to log in to modify your wishlist.");
-      return;
-    }
     try {
       setRemovingItemId(gameId);
-      await axios.delete(`http://localhost:8080/api/wishlist/${gameId}`);
+      await api.delete(`/api/wishlist/${gameId}`);
       setWishlist((prev) => prev.filter((item) => item.gameId !== gameId));
       setError(null);
     } catch (err) {
-      console.error(err);
       setError(
         err.response?.data?.error || "Failed to remove item. Please try again."
       );

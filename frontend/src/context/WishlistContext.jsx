@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import api from "../services/api";
+import { useAuth } from "./AuthContext";
 
 const WishlistContext = createContext();
 
@@ -13,23 +14,11 @@ export const WishlistProvider = ({ children }) => {
   const [feedback, setFeedback] = useState(null);
 
   const navigate = useNavigate();
+  const { isAuthenticated, loading: authLoading } = useAuth();
 
-  // Check if logged in
-  const isLoggedIn = () => !!localStorage.getItem("jwtToken");
-
-  // Set Authorization header for axios globally
-  const setAuthHeader = () => {
-    const token = localStorage.getItem("jwtToken");
-    if (token) {
-      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-      return true;
-    }
-    return false;
-  };
-
-  // Fetch wishlist from backend
+  // Fetch wishlist from backend (cookie-authenticated via the shared api instance)
   const fetchWishlist = async () => {
-    if (!setAuthHeader()) {
+    if (!isAuthenticated) {
       setWishlist([]);
       setError("You need to log in to view your wishlist.");
       setLoading(false);
@@ -37,11 +26,10 @@ export const WishlistProvider = ({ children }) => {
     }
     try {
       setLoading(true);
-      const response = await axios.get("http://localhost:8080/api/wishlist");
+      const response = await api.get("/api/wishlist");
       setWishlist(response.data);
       setError(null);
     } catch (err) {
-      console.error(err);
       setError(
         err.response?.data?.error || "Failed to load wishlist. Please try again."
       );
@@ -52,18 +40,16 @@ export const WishlistProvider = ({ children }) => {
 
   // Add to wishlist
   const addToWishlist = async (gameId) => {
-    if (!isLoggedIn()) {
+    if (!isAuthenticated) {
       navigate("/login");
       return;
     }
     try {
-      if (!setAuthHeader()) return;
-      await axios.post(`http://localhost:8080/api/wishlist/${gameId}`);
+      await api.post(`/api/wishlist/${gameId}`);
       setFeedback("Game added to wishlist!");
       // Refetch wishlist to keep in sync
       await fetchWishlist();
     } catch (err) {
-      console.error(err);
       setFeedback(
         err.response?.data?.error || "Failed to add to wishlist."
       );
@@ -73,18 +59,16 @@ export const WishlistProvider = ({ children }) => {
 
   // Remove from wishlist
   const removeFromWishlist = async (gameId) => {
-    if (!isLoggedIn()) {
+    if (!isAuthenticated) {
       navigate("/login");
       return;
     }
     try {
-      if (!setAuthHeader()) return;
-      await axios.delete(`http://localhost:8080/api/wishlist/${gameId}`);
+      await api.delete(`/api/wishlist/${gameId}`);
       setFeedback("Game removed from wishlist!");
       // Refetch wishlist to keep in sync
       await fetchWishlist();
     } catch (err) {
-      console.error(err);
       setFeedback(
         err.response?.data?.error || "Failed to remove from wishlist."
       );
@@ -98,13 +82,14 @@ export const WishlistProvider = ({ children }) => {
   };
 
   useEffect(() => {
-    if (isLoggedIn()) {
+    if (authLoading) return; // wait for AuthContext's initial /api/auth/me check
+    if (isAuthenticated) {
       fetchWishlist();
     } else {
       setWishlist([]);
       setLoading(false);
     }
-  }, []);
+  }, [isAuthenticated, authLoading]);
 
   return (
     <WishlistContext.Provider value={{

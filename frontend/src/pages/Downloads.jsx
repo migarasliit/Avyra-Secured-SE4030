@@ -1,32 +1,30 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
 import { Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { downloadFile } from "../utils/downloadFile";
+import api from "../services/api";
+import { useAuth } from "../context/AuthContext";
 
 function getFilenameFromGameTitle(title) {
   return title.toLowerCase().replace(/\s+/g, "_") + ".zip";
 }
 
 const Downloads = () => {
+  const { isAuthenticated, loading: authLoading } = useAuth();
   const [downloads, setDownloads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const setAuthHeader = () => {
-    const token = localStorage.getItem("jwtToken");
-    if (token) {
-      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-      return true;
-    }
-    return false;
-  };
-
   const fetchDownloads = async () => {
+    if (!isAuthenticated) {
+      setError("Not authenticated");
+      setLoading(false);
+      return;
+    }
     try {
-      if (!setAuthHeader()) throw new Error("Not authenticated");
-      const res = await axios.get("http://localhost:8080/api/orders");
+      setLoading(true);
+      const res = await api.get("/api/orders");
       const data = res.data;
 
       if (Array.isArray(data)) {
@@ -45,14 +43,13 @@ const Downloads = () => {
   };
 
   useEffect(() => {
+    if (authLoading) return; // wait for AuthContext's initial /api/auth/me check
     fetchDownloads();
-  }, []);
-
-  const token = localStorage.getItem("jwtToken");
+  }, [authLoading, isAuthenticated]);
 
   const handleDownload = async (filename) => {
     try {
-      await downloadFile(filename, token);
+      await downloadFile(filename);
     } catch (error) {
       alert(`Download failed: ${error.message}`);
     }
