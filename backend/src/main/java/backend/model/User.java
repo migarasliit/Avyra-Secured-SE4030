@@ -1,5 +1,6 @@
 package backend.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -23,6 +24,12 @@ public class User {
     @Column(nullable = false, unique = true, length = 100)
     private String username;
 
+    // @JsonIgnore: never let Jackson serialize this into an API response, regardless of which
+    // endpoint or nested relationship (Order.getUser(), CartItem.getUser(), etc.) exposes a User
+    // object. Found leaking the raw bcrypt hash via GET /api/auth/me and every /api/orders/**
+    // response - a single blanket guard here protects every current and future path at once,
+    // rather than needing a DTO on each controller individually.
+    @JsonIgnore
     @NotBlank
     @Column(nullable = false, length = 255)
     private String passwordHash;

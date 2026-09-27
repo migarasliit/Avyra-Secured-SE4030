@@ -11,9 +11,11 @@ import org.springframework.security.config.annotation.web.configurers.HeadersCon
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -52,6 +54,20 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf
                         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                         .csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler())
+                )
+
+                // 2b. For API requests, always respond with a plain 403 instead of Spring Security's
+                // default behaviour of redirecting anonymous access-denied requests (e.g. a CSRF
+                // failure) to the OAuth2 login entry point. Without this, an anonymous request to
+                // any /api/** endpoint that fails an access check - not just unauthenticated ones -
+                // gets a 302 to Google's OAuth2 authorization URL instead of a JSON error the
+                // frontend can actually catch and handle; a browser fetch/XHR call hitting that
+                // redirect fails as an opaque CORS error rather than a clean response.
+                .exceptionHandling(exceptions -> exceptions
+                        .defaultAuthenticationEntryPointFor(
+                                new HttpStatusEntryPoint(HttpStatus.FORBIDDEN),
+                                request -> request.getServletPath().startsWith("/api/")
+                        )
                 )
 
                 // 3. Security Headers: CSP, nosniff, HSTS, frameOptions deny

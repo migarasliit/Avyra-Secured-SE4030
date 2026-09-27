@@ -2,6 +2,7 @@ package backend.controller;
 
 import backend.dto.UserRegisterDTO;
 import backend.dto.UserLoginDTO;
+import backend.dto.UserResponseDTO;
 import backend.model.User;
 import backend.service.UserService;
 import jakarta.servlet.http.HttpServletResponse;
@@ -75,7 +76,7 @@ public class UserController {
     @GetMapping("/me")
     public ResponseEntity<?> getCurrentUser() {
         User user = userService.getAuthenticatedUser(); // Requires JWT filter to extract principal
-        return ResponseEntity.ok(user);
+        return ResponseEntity.ok(new UserResponseDTO(user));
     }
 
     // CSRF Token Endpoint to initialize/retrieve CSRF token for SPA

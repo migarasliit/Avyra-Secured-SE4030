@@ -2,6 +2,7 @@ package backend.service;
 
 import backend.dto.UserRegisterDTO;
 import backend.dto.UserLoginDTO;
+import backend.exception.UserAlreadyExistsException;
 import backend.model.User;
 import backend.repository.UserRepository;
 import backend.security.JwtUtil;
@@ -42,11 +43,11 @@ public class UserServiceImpl implements UserService {
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
             // Log attempt without exposing sensitive data
             logger.warn("SECURITY ALERT: Registration attempt with existing email: {}", request.getEmail());
-            throw new RuntimeException("Email already exists");
+            throw new UserAlreadyExistsException("Email already exists");
         }
         if (userRepository.findByUsername(request.getUsername()).isPresent()) {
             logger.warn("SECURITY ALERT: Registration attempt with existing username: {}", request.getUsername());
-            throw new RuntimeException("Username already exists");
+            throw new UserAlreadyExistsException("Username already exists");
         }
 
         String hashedPassword = passwordEncoder.encode(request.getPassword());
