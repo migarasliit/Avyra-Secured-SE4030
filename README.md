@@ -4,22 +4,22 @@ This repository contains the security-enhanced version of the Avyra Game Downloa
 
 ### 👥 Team Members
 - Shalon Fernando - IT22362544
-- [Member 2 Name] - [Index Number]
-- [Member 3 Name] - [Index Number]
-- [Member 4 Name] - [Index Number]
+- A.G.L.M Wijesinghe - IT23264670
+- LiyanaArachchi L.A.D.D - IT23268494
+- Rukshan E A Y - IT23263512
 
 ### 🔗 Project Links
 - **Original Project:** https://github.com/3hal0n/Avyra
 - **Modified Project:** https://github.com/migarasliit/Avyra-Secured-SE4030
-- **YouTube Demonstration:** [Insert YouTube Link Here - Max 20 mins]
+- **YouTube Demonstration:**  https://youtu.be/oXV1cWi2yiY?si=0zCycfZksKIl_xmD
 
 ### 🛡️ Security Improvements (7+ Distinct Vulnerabilities Fixed)
 1. **Insecure Direct Object Reference (IDOR)** - Fixed in Review deletion endpoint.
 2. **Mass Assignment** - Fixed in Review creation endpoint.
 3. **Stored Cross-Site Scripting (XSS)** - Fixed using OWASP Java Encoder.
-4. **Path Traversal** - Fixed in file download endpoint.
+4. **Vulnerable and Outdated Components (Frontend Dependencies)** - Fixed using OSV-Scanner SCA and npm audit to upgrade and override insecure packages.
 5. **Cryptographic Failures** - Removed hardcoded secrets, migrated to environment variables.
-6. **Using Components with Known Vulnerabilities** - Updated dependencies via OWASP Dependency-Check.
+6. **Sensitive Data Exposure in Logs** - Fixed in UserServiceImpl using secure SLF4J.
 7. **Session Hijacking** - Migrated JWT storage from localStorage to HttpOnly Secure cookies.
 8. **Security Misconfiguration** - Fixed overly permissive CORS settings and verbose error messages.
 
