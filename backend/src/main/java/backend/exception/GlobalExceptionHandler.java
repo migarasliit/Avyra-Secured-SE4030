@@ -45,6 +45,16 @@ public class GlobalExceptionHandler {
                 .body(Map.of("error", "Review not found"));
     }
 
+    // Duplicate email/username on registration is an expected business-rule rejection, not a
+    // server fault - was previously an unhandled RuntimeException that fell through to the
+    // generic 500 handler below. ex.getMessage() here is safe to echo: it only ever describes
+    // the caller's own submitted email/username, never server internals.
+    @ExceptionHandler(UserAlreadyExistsException.class)
+    public ResponseEntity<?> handleUserAlreadyExists(UserAlreadyExistsException e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(Map.of("error", e.getMessage()));
+    }
+
     // Covers UsernameNotFoundException thrown by UserServiceImpl.getAuthenticatedUser()
     // when the caller isn't logged in: Spring Security's default anonymous-authentication
     // filter still populates a principal named "anonymousUser" for unauthenticated requests,
