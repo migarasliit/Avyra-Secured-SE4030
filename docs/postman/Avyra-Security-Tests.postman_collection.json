@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Avyra Security Tests (Vuln 7 & 8 + CSRF + OAuth2)",
-    "description": "Covers Member 4's assigned vulnerabilities: #7 Session Hijacking (JWT cookie) and #8 Security Misconfiguration (headers/errors), plus the CSRF protection added alongside them and a sanity check on the Google OAuth2 wiring. See docs/SECURITY-VULN-7-8.md for the full writeup these tests verify.\n\nIMPORTANT: this collection manages cookies itself via collection variables (xsrfToken, jwtToken) instead of relying on any runner's built-in cookie jar - collection-level Pre-request/Test scripts were tried first but are unreliable on Postman's cloud/web runner specifically, so every request below carries its own copy of the same attach/capture logic instead (the one script mechanism that works identically on Postman Desktop, Postman Cloud, the VS Code extension, and `newman run`). Each request's Pre-request Script attaches `Cookie: XSRF-TOKEN=...; jwtToken=...` and `X-XSRF-TOKEN` from whatever is currently stored in those two variables; each request's Test script captures fresh values from the response (checking both the runner's own cookie jar via pm.cookies AND the raw Set-Cookie header, since different runners populate one or the other). Run folders in order (0 -> 4) - later folders depend on being logged in by folder 1.",
+    "description": "Covers CSRF, session security, OAuth2, security misconfiguration fix tests.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
