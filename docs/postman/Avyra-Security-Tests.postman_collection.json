@@ -1,14 +1,16 @@
 {
   "info": {
     "name": "Avyra Security Tests (Vuln 7 & 8 + CSRF + OAuth2)",
-    "description": "Covers Member 4's assigned vulnerabilities: #7 Session Hijacking (JWT cookie) and #8 Security Misconfiguration (headers/errors), plus the CSRF protection added alongside them and a sanity check on the Google OAuth2 wiring. See docs/SECURITY-VULN-7-8.md for the full writeup these tests verify.\n\nIMPORTANT: Postman does NOT automatically turn a cookie into a custom header the way the frontend's axios interceptor does. Every request below that needs CSRF protection reads the XSRF-TOKEN cookie in its Pre-request Script and sets it as the X-XSRF-TOKEN header manually. Make sure Postman's cookie jar is enabled (Settings > General > 'Automatically follow redirects' and cookies are on by default) so cookies persist between requests in this collection.",
+    "description": "Covers Member 4's assigned vulnerabilities: #7 Session Hijacking (JWT cookie) and #8 Security Misconfiguration (headers/errors), plus the CSRF protection added alongside them and a sanity check on the Google OAuth2 wiring. See docs/SECURITY-VULN-7-8.md for the full writeup these tests verify.\n\nIMPORTANT: this collection manages cookies itself via collection variables (xsrfToken, jwtToken) instead of relying on any runner's built-in cookie jar - collection-level Pre-request/Test scripts were tried first but are unreliable on Postman's cloud/web runner specifically, so every request below carries its own copy of the same attach/capture logic instead (the one script mechanism that works identically on Postman Desktop, Postman Cloud, the VS Code extension, and `newman run`). Each request's Pre-request Script attaches `Cookie: XSRF-TOKEN=...; jwtToken=...` and `X-XSRF-TOKEN` from whatever is currently stored in those two variables; each request's Test script captures fresh values from the response (checking both the runner's own cookie jar via pm.cookies AND the raw Set-Cookie header, since different runners populate one or the other). Run folders in order (0 -> 4) - later folders depend on being logged in by folder 1.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
     { "key": "baseUrl", "value": "http://localhost:8080" },
     { "key": "testUsername", "value": "postman_tester" },
     { "key": "testEmail", "value": "postman_tester@example.com" },
-    { "key": "testPassword", "value": "TestPass123!" }
+    { "key": "testPassword", "value": "TestPass123!" },
+    { "key": "xsrfToken", "value": "" },
+    { "key": "jwtToken", "value": "" }
   ],
   "item": [
     {
@@ -22,13 +24,40 @@
           },
           "event": [
             {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const xsrf = pm.collectionVariables.get('xsrfToken');",
+                  "const jwt = pm.collectionVariables.get('jwtToken');",
+                  "const parts = [];",
+                  "if (xsrf) parts.push('XSRF-TOKEN=' + xsrf);",
+                  "if (jwt) parts.push('jwtToken=' + jwt);",
+                  "if (parts.length > 0) pm.request.headers.upsert({ key: 'Cookie', value: parts.join('; ') });",
+                  "if (xsrf) pm.request.headers.upsert({ key: 'X-XSRF-TOKEN', value: xsrf });"
+                ]
+              }
+            },
+            {
               "listen": "test",
               "script": {
                 "exec": [
+                  "const xsrfFromJar = pm.cookies.get('XSRF-TOKEN');",
+                  "const jwtFromJar = pm.cookies.get('jwtToken');",
+                  "if (xsrfFromJar) pm.collectionVariables.set('xsrfToken', xsrfFromJar);",
+                  "if (jwtFromJar) pm.collectionVariables.set('jwtToken', jwtFromJar);",
+                  "pm.response.headers.all().forEach((h) => {",
+                  "    if (h.key.toLowerCase() !== 'set-cookie') return;",
+                  "    const match = h.value.match(/^\\s*([^=]+)=([^;]*)/);",
+                  "    if (!match) return;",
+                  "    const name = match[1].trim();",
+                  "    const value = match[2].trim();",
+                  "    if (name === 'XSRF-TOKEN' && value) pm.collectionVariables.set('xsrfToken', value);",
+                  "    if (name === 'jwtToken') pm.collectionVariables.set('jwtToken', value);",
+                  "});",
+                  "",
                   "pm.test('Status is 200', () => pm.response.to.have.status(200));",
-                  "pm.test('XSRF-TOKEN cookie was set', () => {",
-                  "    const cookie = pm.cookies.get('XSRF-TOKEN');",
-                  "    pm.expect(cookie).to.not.be.undefined;",
+                  "pm.test('XSRF-TOKEN cookie was captured', () => {",
+                  "    pm.expect(pm.collectionVariables.get('xsrfToken')).to.not.be.empty;",
                   "});"
                 ]
               }
@@ -45,8 +74,7 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "X-XSRF-TOKEN", "value": "{{xsrfToken}}" }
+              { "key": "Content-Type", "value": "application/json" }
             ],
             "url": "{{baseUrl}}/api/auth/register",
             "body": {
@@ -57,14 +85,38 @@
           "event": [
             {
               "listen": "prerequest",
-              "script": { "exec": ["pm.collectionVariables.set('xsrfToken', pm.cookies.get('XSRF-TOKEN'));"] }
+              "script": {
+                "exec": [
+                  "const xsrf = pm.collectionVariables.get('xsrfToken');",
+                  "const jwt = pm.collectionVariables.get('jwtToken');",
+                  "const parts = [];",
+                  "if (xsrf) parts.push('XSRF-TOKEN=' + xsrf);",
+                  "if (jwt) parts.push('jwtToken=' + jwt);",
+                  "if (parts.length > 0) pm.request.headers.upsert({ key: 'Cookie', value: parts.join('; ') });",
+                  "if (xsrf) pm.request.headers.upsert({ key: 'X-XSRF-TOKEN', value: xsrf });"
+                ]
+              }
             },
             {
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Registration succeeds or user already exists (both fine for a repeat run)', () => {",
-                  "    pm.expect([200, 400]).to.include(pm.response.code);",
+                  "const xsrfFromJar = pm.cookies.get('XSRF-TOKEN');",
+                  "const jwtFromJar = pm.cookies.get('jwtToken');",
+                  "if (xsrfFromJar) pm.collectionVariables.set('xsrfToken', xsrfFromJar);",
+                  "if (jwtFromJar) pm.collectionVariables.set('jwtToken', jwtFromJar);",
+                  "pm.response.headers.all().forEach((h) => {",
+                  "    if (h.key.toLowerCase() !== 'set-cookie') return;",
+                  "    const match = h.value.match(/^\\s*([^=]+)=([^;]*)/);",
+                  "    if (!match) return;",
+                  "    const name = match[1].trim();",
+                  "    const value = match[2].trim();",
+                  "    if (name === 'XSRF-TOKEN' && value) pm.collectionVariables.set('xsrfToken', value);",
+                  "    if (name === 'jwtToken') pm.collectionVariables.set('jwtToken', value);",
+                  "});",
+                  "",
+                  "pm.test('Registration succeeds (200) or the user already exists (409) - both fine for a repeat run', () => {",
+                  "    pm.expect([200, 409]).to.include(pm.response.code);",
                   "});"
                 ]
               }
@@ -76,31 +128,54 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "X-XSRF-TOKEN", "value": "{{xsrfToken}}" }
+              { "key": "Content-Type", "value": "application/json" }
             ],
             "url": "{{baseUrl}}/api/auth/login",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"{{testUsername}}\",\n  \"password\": \"{{testPassword}}\"\n}"
+              "raw": "{\n  \"emailOrUsername\": \"{{testUsername}}\",\n  \"password\": \"{{testPassword}}\"\n}"
             }
           },
           "event": [
             {
               "listen": "prerequest",
-              "script": { "exec": ["pm.collectionVariables.set('xsrfToken', pm.cookies.get('XSRF-TOKEN'));"] }
+              "script": {
+                "exec": [
+                  "const xsrf = pm.collectionVariables.get('xsrfToken');",
+                  "const jwt = pm.collectionVariables.get('jwtToken');",
+                  "const parts = [];",
+                  "if (xsrf) parts.push('XSRF-TOKEN=' + xsrf);",
+                  "if (jwt) parts.push('jwtToken=' + jwt);",
+                  "if (parts.length > 0) pm.request.headers.upsert({ key: 'Cookie', value: parts.join('; ') });",
+                  "if (xsrf) pm.request.headers.upsert({ key: 'X-XSRF-TOKEN', value: xsrf });"
+                ]
+              }
             },
             {
               "listen": "test",
               "script": {
                 "exec": [
+                  "const xsrfFromJar = pm.cookies.get('XSRF-TOKEN');",
+                  "const jwtFromJar = pm.cookies.get('jwtToken');",
+                  "if (xsrfFromJar) pm.collectionVariables.set('xsrfToken', xsrfFromJar);",
+                  "if (jwtFromJar) pm.collectionVariables.set('jwtToken', jwtFromJar);",
+                  "pm.response.headers.all().forEach((h) => {",
+                  "    if (h.key.toLowerCase() !== 'set-cookie') return;",
+                  "    const match = h.value.match(/^\\s*([^=]+)=([^;]*)/);",
+                  "    if (!match) return;",
+                  "    const name = match[1].trim();",
+                  "    const value = match[2].trim();",
+                  "    if (name === 'XSRF-TOKEN' && value) pm.collectionVariables.set('xsrfToken', value);",
+                  "    if (name === 'jwtToken') pm.collectionVariables.set('jwtToken', value);",
+                  "});",
+                  "",
                   "pm.test('Status is 200', () => pm.response.to.have.status(200));",
                   "pm.test('Response body does NOT contain the raw JWT (this is the vuln 7 fix)', () => {",
                   "    const body = pm.response.text();",
                   "    pm.expect(body).to.not.match(/eyJ[a-zA-Z0-9_-]+\\.[a-zA-Z0-9_-]+\\./);",
                   "});",
                   "pm.test('jwtToken cookie was set', () => {",
-                  "    pm.expect(pm.cookies.has('jwtToken')).to.be.true;",
+                  "    pm.expect(pm.collectionVariables.get('jwtToken')).to.not.be.empty;",
                   "});"
                 ]
               }
@@ -112,30 +187,56 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "X-XSRF-TOKEN", "value": "{{xsrfToken}}" }
+              { "key": "Content-Type", "value": "application/json" }
             ],
             "url": "{{baseUrl}}/api/auth/login",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"{{testUsername}}\",\n  \"password\": \"{{testPassword}}\"\n}"
+              "raw": "{\n  \"emailOrUsername\": \"{{testUsername}}\",\n  \"password\": \"{{testPassword}}\"\n}"
             }
           },
           "event": [
             {
               "listen": "prerequest",
-              "script": { "exec": ["pm.collectionVariables.set('xsrfToken', pm.cookies.get('XSRF-TOKEN'));"] }
+              "script": {
+                "exec": [
+                  "const xsrf = pm.collectionVariables.get('xsrfToken');",
+                  "const jwt = pm.collectionVariables.get('jwtToken');",
+                  "const parts = [];",
+                  "if (xsrf) parts.push('XSRF-TOKEN=' + xsrf);",
+                  "if (jwt) parts.push('jwtToken=' + jwt);",
+                  "if (parts.length > 0) pm.request.headers.upsert({ key: 'Cookie', value: parts.join('; ') });",
+                  "if (xsrf) pm.request.headers.upsert({ key: 'X-XSRF-TOKEN', value: xsrf });"
+                ]
+              }
             },
             {
               "listen": "test",
               "script": {
                 "exec": [
-                  "const setCookieHeaders = pm.response.headers.filter('Set-Cookie');",
+                  "const xsrfFromJar = pm.cookies.get('XSRF-TOKEN');",
+                  "const jwtFromJar = pm.cookies.get('jwtToken');",
+                  "if (xsrfFromJar) pm.collectionVariables.set('xsrfToken', xsrfFromJar);",
+                  "if (jwtFromJar) pm.collectionVariables.set('jwtToken', jwtFromJar);",
+                  "",
+                  "const setCookieHeaders = pm.response.headers.all().filter(h => h.key.toLowerCase() === 'set-cookie');",
+                  "setCookieHeaders.forEach((h) => {",
+                  "    const match = h.value.match(/^\\s*([^=]+)=([^;]*)/);",
+                  "    if (!match) return;",
+                  "    const name = match[1].trim();",
+                  "    const value = match[2].trim();",
+                  "    if (name === 'XSRF-TOKEN' && value) pm.collectionVariables.set('xsrfToken', value);",
+                  "    if (name === 'jwtToken') pm.collectionVariables.set('jwtToken', value);",
+                  "});",
+                  "",
                   "const jwtCookieHeader = setCookieHeaders.find(h => h.value.startsWith('jwtToken='));",
-                  "pm.test('jwtToken cookie is HttpOnly', () => pm.expect(jwtCookieHeader.value).to.include('HttpOnly'));",
-                  "pm.test('jwtToken cookie is SameSite=Strict', () => pm.expect(jwtCookieHeader.value).to.include('SameSite=Strict'));",
-                  "// Secure flag only appears when APP_SECURITY_COOKIE_SECURE=true (HTTPS deployments). On local HTTP dev this is expected to be absent.",
-                  "console.log('Full Set-Cookie for jwtToken:', jwtCookieHeader.value);"
+                  "pm.test('a jwtToken Set-Cookie header was present', () => pm.expect(jwtCookieHeader).to.not.be.undefined);",
+                  "if (jwtCookieHeader) {",
+                  "    pm.test('jwtToken cookie is HttpOnly', () => pm.expect(jwtCookieHeader.value).to.include('HttpOnly'));",
+                  "    pm.test('jwtToken cookie is SameSite=Strict', () => pm.expect(jwtCookieHeader.value).to.include('SameSite=Strict'));",
+                  "    // Secure flag only appears when APP_SECURITY_COOKIE_SECURE=true (HTTPS deployments). On local HTTP dev this is expected to be absent.",
+                  "    console.log('Full Set-Cookie for jwtToken:', jwtCookieHeader.value);",
+                  "}"
                 ]
               }
             }
@@ -148,6 +249,20 @@
             "url": "{{baseUrl}}/api/auth/me"
           },
           "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const xsrf = pm.collectionVariables.get('xsrfToken');",
+                  "const jwt = pm.collectionVariables.get('jwtToken');",
+                  "const parts = [];",
+                  "if (xsrf) parts.push('XSRF-TOKEN=' + xsrf);",
+                  "if (jwt) parts.push('jwtToken=' + jwt);",
+                  "if (parts.length > 0) pm.request.headers.upsert({ key: 'Cookie', value: parts.join('; ') });",
+                  "if (xsrf) pm.request.headers.upsert({ key: 'X-XSRF-TOKEN', value: xsrf });"
+                ]
+              }
+            },
             {
               "listen": "test",
               "script": {
@@ -165,17 +280,38 @@
           "name": "Logout - cookie gets cleared",
           "request": {
             "method": "POST",
-            "header": [{ "key": "X-XSRF-TOKEN", "value": "{{xsrfToken}}" }],
             "url": "{{baseUrl}}/api/auth/logout"
           },
           "event": [
             {
               "listen": "prerequest",
-              "script": { "exec": ["pm.collectionVariables.set('xsrfToken', pm.cookies.get('XSRF-TOKEN'));"] }
+              "script": {
+                "exec": [
+                  "const xsrf = pm.collectionVariables.get('xsrfToken');",
+                  "const jwt = pm.collectionVariables.get('jwtToken');",
+                  "const parts = [];",
+                  "if (xsrf) parts.push('XSRF-TOKEN=' + xsrf);",
+                  "if (jwt) parts.push('jwtToken=' + jwt);",
+                  "if (parts.length > 0) pm.request.headers.upsert({ key: 'Cookie', value: parts.join('; ') });",
+                  "if (xsrf) pm.request.headers.upsert({ key: 'X-XSRF-TOKEN', value: xsrf });"
+                ]
+              }
             },
             {
               "listen": "test",
-              "script": { "exec": ["pm.test('Status is 200', () => pm.response.to.have.status(200));"] }
+              "script": {
+                "exec": [
+                  "pm.response.headers.all().forEach((h) => {",
+                  "    if (h.key.toLowerCase() !== 'set-cookie') return;",
+                  "    const match = h.value.match(/^\\s*([^=]+)=([^;]*)/);",
+                  "    if (!match) return;",
+                  "    const name = match[1].trim();",
+                  "    const value = match[2].trim();",
+                  "    if (name === 'jwtToken') pm.collectionVariables.set('jwtToken', value);",
+                  "});",
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
             }
           ]
         },
@@ -186,6 +322,20 @@
             "url": "{{baseUrl}}/api/auth/me"
           },
           "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const xsrf = pm.collectionVariables.get('xsrfToken');",
+                  "const jwt = pm.collectionVariables.get('jwtToken');",
+                  "const parts = [];",
+                  "if (xsrf) parts.push('XSRF-TOKEN=' + xsrf);",
+                  "if (jwt) parts.push('jwtToken=' + jwt);",
+                  "if (parts.length > 0) pm.request.headers.upsert({ key: 'Cookie', value: parts.join('; ') });",
+                  "if (xsrf) pm.request.headers.upsert({ key: 'X-XSRF-TOKEN', value: xsrf });"
+                ]
+              }
+            },
             {
               "listen": "test",
               "script": {
@@ -223,7 +373,7 @@
                   "// Strict-Transport-Security is intentionally ABSENT over plain HTTP (localhost). Spring Security's",
                   "// HSTS writer only emits it on an actual HTTPS connection - sending it over HTTP would be meaningless",
                   "// and browsers ignore it anyway per RFC 6797. Only assert this header once the app is served over HTTPS.",
-                  "if (pm.request.url.getProtocol() === 'https') {",
+                  "if (pm.request.url.toString().indexOf('https://') === 0) {",
                   "    pm.test('Strict-Transport-Security present (HTTPS only)', () => {",
                   "        pm.expect(pm.response.headers.get('Strict-Transport-Security')).to.include('max-age=');",
                   "    });",
@@ -256,8 +406,22 @@
         },
         {
           "name": "GET /api/wishlist without login - clean 401, not a raw exception (dead exception handler fix)",
-          "request": { "method": "GET", "url": "{{baseUrl}}/api/wishlist" },
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/wishlist"
+          },
           "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// This request must run logged-out regardless of what earlier folders left behind -",
+                  "// strip any cookie entirely rather than reusing the shared attach snippet.",
+                  "pm.request.headers.remove('Cookie');",
+                  "pm.request.headers.remove('X-XSRF-TOKEN');"
+                ]
+              }
+            },
             {
               "listen": "test",
               "script": {
@@ -284,6 +448,16 @@
           },
           "event": [
             {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Deliberately send nothing, to prove an anonymous/token-less request is actually rejected.",
+                  "pm.request.headers.remove('Cookie');",
+                  "pm.request.headers.remove('X-XSRF-TOKEN');"
+                ]
+              }
+            },
+            {
               "listen": "test",
               "script": {
                 "exec": [
@@ -297,19 +471,28 @@
           "name": "POST /api/cart WITH X-XSRF-TOKEN header - CSRF passes (needs prior login in this run)",
           "request": {
             "method": "POST",
-            "header": [{ "key": "X-XSRF-TOKEN", "value": "{{xsrfToken}}" }],
             "url": "{{baseUrl}}/api/cart/1?quantity=1"
           },
           "event": [
             {
               "listen": "prerequest",
-              "script": { "exec": ["pm.collectionVariables.set('xsrfToken', pm.cookies.get('XSRF-TOKEN'));"] }
+              "script": {
+                "exec": [
+                  "const xsrf = pm.collectionVariables.get('xsrfToken');",
+                  "const jwt = pm.collectionVariables.get('jwtToken');",
+                  "const parts = [];",
+                  "if (xsrf) parts.push('XSRF-TOKEN=' + xsrf);",
+                  "if (jwt) parts.push('jwtToken=' + jwt);",
+                  "if (parts.length > 0) pm.request.headers.upsert({ key: 'Cookie', value: parts.join('; ') });",
+                  "if (xsrf) pm.request.headers.upsert({ key: 'X-XSRF-TOKEN', value: xsrf });"
+                ]
+              }
             },
             {
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Not a 403 (CSRF token was accepted; a 401 here just means you are not logged in in this run, which is fine)', () => {",
+                  "pm.test('Not a 403 (CSRF token was accepted; a 401 here just means you are logged out from folder 1s logout step in this run, which is fine)', () => {",
                   "    pm.expect(pm.response.code).to.not.eql(403);",
                   "});"
                 ]
